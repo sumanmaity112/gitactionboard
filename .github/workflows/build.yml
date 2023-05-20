@@ -86,7 +86,7 @@ jobs:
 
   determaine_current_tag_name:
     runs-on: ubuntu-22.04
-    needs: [build, determaine_should_publish_new_version]
+    needs: [determaine_should_publish_new_version]
     if: ${{ needs.determaine_should_publish_new_version.outputs.PUBLISH_NEW_VERSION == 'true' }}
     outputs:
       CURRENT_TAG: ${{ steps.find_current_tag_name.outputs.CURRENT_TAG }}
