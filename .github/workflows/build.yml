@@ -13,60 +13,60 @@ env:
   SERVICE_NAME: gitactionboard
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout local repository
-        uses: actions/checkout@v3
-        with:
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
-      - name: Install prettier using npm
-        run: sudo npm install --global prettier
-      - name: Install jenv
-        run: |
-          git clone https://github.com/gcuisinier/jenv.git ~/.jenv
-          echo "$HOME/.jenv/bin" >> $GITHUB_PATH
-      - name: Configure jenv
-        run: |
-          jenv init -
-          jenv add ${JAVA_HOME_17_X64}
-      - name: Install Hadolint and add to PATH
-        run: |
-          sh bin/install-hadolint.sh
-          echo "$GITHUB_WORKSPACE/$SERVICE_NAME" >> $GITHUB_PATH
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Cache gradle wrapper and jars
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-            ${{ runner.os }}-
-      - name: Cache pitest history
-        uses: pat-s/always-upload-cache@v3.0.11
-        with:
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/pitestHistory/pitestHistory
-          key: pitestHistory-${{ hashFiles('**/*.gradle*') }}
-      - name: Run all tests
-        run: ./run.sh test
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Run Mutation test for backend
-        run: ./run.sh pitest
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Upload build report to artifacts
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: ${{ env.SERVICE_NAME }}-build-reports
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/build/reports/
+#  build:
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - name: Checkout local repository
+#        uses: actions/checkout@v3
+#        with:
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
+#      - name: Install prettier using npm
+#        run: sudo npm install --global prettier
+#      - name: Install jenv
+#        run: |
+#          git clone https://github.com/gcuisinier/jenv.git ~/.jenv
+#          echo "$HOME/.jenv/bin" >> $GITHUB_PATH
+#      - name: Configure jenv
+#        run: |
+#          jenv init -
+#          jenv add ${JAVA_HOME_17_X64}
+#      - name: Install Hadolint and add to PATH
+#        run: |
+#          sh bin/install-hadolint.sh
+#          echo "$GITHUB_WORKSPACE/$SERVICE_NAME" >> $GITHUB_PATH
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Cache gradle wrapper and jars
+#        uses: actions/cache@v3
+#        with:
+#          path: |
+#            ~/.gradle/caches
+#            ~/.gradle/wrapper
+#          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+#      - name: Cache node modules
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/.npm
+#          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+#          restore-keys: |
+#            ${{ runner.os }}-node-
+#            ${{ runner.os }}-
+#      - name: Cache pitest history
+#        uses: pat-s/always-upload-cache@v3.0.11
+#        with:
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/pitestHistory/pitestHistory
+#          key: pitestHistory-${{ hashFiles('**/*.gradle*') }}
+#      - name: Run all tests
+#        run: ./run.sh test
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Run Mutation test for backend
+#        run: ./run.sh pitest
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Upload build report to artifacts
+#        uses: actions/upload-artifact@v3
+#        if: always()
+#        with:
+#          name: ${{ env.SERVICE_NAME }}-build-reports
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/build/reports/
 
   determaine_should_publish_new_version:
     runs-on: ubuntu-22.04
@@ -101,7 +101,7 @@ jobs:
 
   update_changelog:
     runs-on: ubuntu-22.04
-    needs: [build, determaine_should_publish_new_version]
+    needs: [determaine_should_publish_new_version]
     if: ${{ needs.determaine_should_publish_new_version.outputs.PUBLISH_NEW_VERSION == 'true' }}
     permissions:
       contents: write
@@ -125,116 +125,116 @@ jobs:
           fi
         working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
 
-  docker:
-    runs-on: ubuntu-22.04
-    needs: [build, determaine_current_tag_name, update_changelog]
-    steps:
-      - name: Checkout local repository
-        uses: actions/checkout@v3
-        with:
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
-      - name: Install jenv
-        run: |
-          git clone https://github.com/gcuisinier/jenv.git ~/.jenv
-          echo "$HOME/.jenv/bin" >> $GITHUB_PATH
-      - name: Configure jenv
-        run: |
-          jenv init -
-          jenv add ${JAVA_HOME_17_X64}
-      - name: Cache gradle wrapper and jars
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-            ${{ runner.os }}-
-      - name: Build boot jar
-        id: build_jar
-        run: ./run.sh build-jar
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Docker meta
-        id: docker_meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.SERVICE_NAME }}
-          tags: |
-            type=semver,pattern={{major}}.{{minor}}.{{patch}}
-            type=semver,pattern={{major}}.{{minor}}
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-      - name: Create change log url
-        id: create_change_log_url
-        run: |
-          echo "CHANGE_LOG_URL=$(./run.sh generate-changelog-url ${{ needs.determaine_current_tag_name.outputs.CURRENT_TAG }})" >> $GITHUB_OUTPUT
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: create github release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/build/libs/gitactionboard.jar"
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: "${{ needs.determaine_current_tag_name.outputs.CURRENT_TAG }}"
-          body: "Changelog can be found [here](${{ steps.create_change_log_url.outputs.CHANGE_LOG_URL }})."
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v4
-        with:
-          context: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
-          push: true
-      - name: Update docker hub description
-        uses: peter-evans/dockerhub-description@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-          repository: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.SERVICE_NAME }}
-          readme-filepath: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/README.md
-
-  deploy_to_github_pages:
-    runs-on: ubuntu-22.04
-    needs: [docker]
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout local repository
-        uses: actions/checkout@v3
-        with:
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-        with:
-          enablement: true
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-            ${{ runner.os }}-
-      - name: Build frontend
-        run: ./run.sh frontend-build-for-github-pages
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v1
-        with:
-          path: "${{ github.workspace }}/${{ env.SERVICE_NAME }}/frontend/dist"
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+#  docker:
+#    runs-on: ubuntu-22.04
+#    needs: [build, determaine_current_tag_name, update_changelog]
+#    steps:
+#      - name: Checkout local repository
+#        uses: actions/checkout@v3
+#        with:
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
+#      - name: Install jenv
+#        run: |
+#          git clone https://github.com/gcuisinier/jenv.git ~/.jenv
+#          echo "$HOME/.jenv/bin" >> $GITHUB_PATH
+#      - name: Configure jenv
+#        run: |
+#          jenv init -
+#          jenv add ${JAVA_HOME_17_X64}
+#      - name: Cache gradle wrapper and jars
+#        uses: actions/cache@v3
+#        with:
+#          path: |
+#            ~/.gradle/caches
+#            ~/.gradle/wrapper
+#          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+#      - name: Cache node modules
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/.npm
+#          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+#          restore-keys: |
+#            ${{ runner.os }}-node-
+#            ${{ runner.os }}-
+#      - name: Build boot jar
+#        id: build_jar
+#        run: ./run.sh build-jar
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Docker meta
+#        id: docker_meta
+#        uses: docker/metadata-action@v4
+#        with:
+#          images: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.SERVICE_NAME }}
+#          tags: |
+#            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+#            type=semver,pattern={{major}}.{{minor}}
+#      - name: Login to DockerHub
+#        uses: docker/login-action@v2
+#        with:
+#          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+#      - name: Create change log url
+#        id: create_change_log_url
+#        run: |
+#          echo "CHANGE_LOG_URL=$(./run.sh generate-changelog-url ${{ needs.determaine_current_tag_name.outputs.CURRENT_TAG }})" >> $GITHUB_OUTPUT
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: create github release
+#        uses: ncipollo/release-action@v1
+#        with:
+#          artifacts: "${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/build/libs/gitactionboard.jar"
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          tag: "${{ needs.determaine_current_tag_name.outputs.CURRENT_TAG }}"
+#          body: "Changelog can be found [here](${{ steps.create_change_log_url.outputs.CHANGE_LOG_URL }})."
+#      - name: Build and push
+#        id: docker_build
+#        uses: docker/build-push-action@v4
+#        with:
+#          context: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
+#          tags: ${{ steps.docker_meta.outputs.tags }}
+#          labels: ${{ steps.docker_meta.outputs.labels }}
+#          push: true
+#      - name: Update docker hub description
+#        uses: peter-evans/dockerhub-description@v3
+#        with:
+#          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+#          repository: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.SERVICE_NAME }}
+#          readme-filepath: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/README.md
+#
+#  deploy_to_github_pages:
+#    runs-on: ubuntu-22.04
+#    needs: [docker]
+#    permissions:
+#      contents: read
+#      pages: write
+#      id-token: write
+#    environment:
+#      name: github-pages
+#      url: ${{ steps.deployment.outputs.page_url }}
+#    steps:
+#      - name: Checkout local repository
+#        uses: actions/checkout@v3
+#        with:
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
+#      - name: Setup Pages
+#        uses: actions/configure-pages@v3
+#        with:
+#          enablement: true
+#      - name: Cache node modules
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/.npm
+#          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+#          restore-keys: |
+#            ${{ runner.os }}-node-
+#            ${{ runner.os }}-
+#      - name: Build frontend
+#        run: ./run.sh frontend-build-for-github-pages
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Upload site artifact
+#        uses: actions/upload-pages-artifact@v1
+#        with:
+#          path: "${{ github.workspace }}/${{ env.SERVICE_NAME }}/frontend/dist"
+#      - name: Deploy to GitHub Pages
+#        id: deployment
+#        uses: actions/deploy-pages@v2

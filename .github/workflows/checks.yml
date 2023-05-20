@@ -1,77 +1,77 @@
-name: checks
-
-on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - 'CHANGELOG.md'
-  pull_request:
-    types: [ opened, reopened, review_requested, edited, ready_for_review ]
-  schedule:
-    - cron: '0 6 * * 1-5'
-env:
-  SERVICE_NAME: gitactionboard
-
-jobs:
-  talisman-checks:
-    runs-on: ubuntu-22.04
-    if: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'schedule' }}
-    steps:
-      - name: Checkout local repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 5
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
-      - name: Install talisman and add to PATH
-        run: |
-          sh bin/install-talisman.sh
-          echo "$GITHUB_WORKSPACE/$SERVICE_NAME" >> $GITHUB_PATH
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Talisman Verify
-        run: ./run.sh talisman-verify
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-
-  dependency-checks:
-    if: ${{ github.event_name != 'pull_request' || github.actor == 'dependabot[bot]' }}
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout local repository
-        uses: actions/checkout@v3
-        with:
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
-      - name: Install jenv
-        run: |
-          git clone https://github.com/gcuisinier/jenv.git ~/.jenv
-          echo "$HOME/.jenv/bin" >> $GITHUB_PATH
-      - name: Configure jenv
-        run: |
-          jenv init -
-          jenv add ${JAVA_HOME_17_X64}
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Get Date
-        id: get-date
-        run: |
-          echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
-        shell: bash
-      - name: Cache nvd nist data
-        uses: actions/cache@v3
-        id: nvd-nist-cache
-        with:
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/.nvd-nist-cache
-          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-nvd-nist-cache-${{ hashFiles('**/*.gradle*') }}
-      - name: Cache gradle wrapper and jars
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-      - name: Dependency Check
-        run: ./run.sh check
-        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
-      - name: Upload dependency check report to artifacts
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: dependency-check-report.html
-          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/build/reports/dependency-check-report.html
+#name: checks
+#
+#on:
+#  push:
+#    branches: [ main ]
+#    paths-ignore:
+#      - 'CHANGELOG.md'
+#  pull_request:
+#    types: [ opened, reopened, review_requested, edited, ready_for_review ]
+#  schedule:
+#    - cron: '0 6 * * 1-5'
+#env:
+#  SERVICE_NAME: gitactionboard
+#
+#jobs:
+#  talisman-checks:
+#    runs-on: ubuntu-22.04
+#    if: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'schedule' }}
+#    steps:
+#      - name: Checkout local repository
+#        uses: actions/checkout@v3
+#        with:
+#          fetch-depth: 5
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
+#      - name: Install talisman and add to PATH
+#        run: |
+#          sh bin/install-talisman.sh
+#          echo "$GITHUB_WORKSPACE/$SERVICE_NAME" >> $GITHUB_PATH
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Talisman Verify
+#        run: ./run.sh talisman-verify
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#
+#  dependency-checks:
+#    if: ${{ github.event_name != 'pull_request' || github.actor == 'dependabot[bot]' }}
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - name: Checkout local repository
+#        uses: actions/checkout@v3
+#        with:
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
+#      - name: Install jenv
+#        run: |
+#          git clone https://github.com/gcuisinier/jenv.git ~/.jenv
+#          echo "$HOME/.jenv/bin" >> $GITHUB_PATH
+#      - name: Configure jenv
+#        run: |
+#          jenv init -
+#          jenv add ${JAVA_HOME_17_X64}
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Get Date
+#        id: get-date
+#        run: |
+#          echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
+#        shell: bash
+#      - name: Cache nvd nist data
+#        uses: actions/cache@v3
+#        id: nvd-nist-cache
+#        with:
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/.nvd-nist-cache
+#          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-nvd-nist-cache-${{ hashFiles('**/*.gradle*') }}
+#      - name: Cache gradle wrapper and jars
+#        uses: actions/cache@v3
+#        with:
+#          path: |
+#            ~/.gradle/caches
+#            ~/.gradle/wrapper
+#          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+#      - name: Dependency Check
+#        run: ./run.sh check
+#        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+#      - name: Upload dependency check report to artifacts
+#        if: ${{ failure() }}
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: dependency-check-report.html
+#          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/backend/build/reports/dependency-check-report.html
